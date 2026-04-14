@@ -1,0 +1,11 @@
+# CAD AI - Ignore local files and directories
+*.pyc
+__pycache__/
+.DS_Store
+*.egg-info/
+dist/
+build/
+.env
+.vscode/
+*.log
+.idea/
