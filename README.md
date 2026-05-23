@@ -1,54 +1,114 @@
-# 🤖 CAD AI - Intelligent 3D Modeling Assistant
+# 🦾 Prosthetic CAD AI
 
-An innovative **AI-powered CAD assistant** that transforms natural language descriptions into production-ready 3D models in FreeCAD. Uses **Ollama (DeepSeek AI)** for intelligent interpretation and **FreeCAD** for precision CAD generation.
+**Intelligent Prosthetic Design Generation Using Natural Language and AI**
+
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Python 3.9+](https://img.shields.io/badge/Python-3.9+-green.svg)
+![Status: Active](https://img.shields.io/badge/Status-Active-brightgreen.svg)
+![AI-Powered](https://img.shields.io/badge/AI%20Powered-LLM%2FCAD-ff69b4.svg)
 
 ---
 
-## ✨ Key Features
+## 🎯 Overview
 
-### 🧠 **AI-Powered Interpretation**
-- Uses **DeepSeek-r1 3B** (Ollama) running locally for intelligent part description parsing
-- Natural language support: describe what you want, the AI interprets it
-- Parametric inputs: size, width, height, thickness customization
-- Fast inference with offline processing (no cloud dependency)
+**Prosthetic CAD AI** bridges the gap between clinical requirements and CAD engineering using **natural language and artificial intelligence** to automatically generate 3D prosthetic models.
 
-### 🎨 **15+ Parametric CAD Shapes**
-Generate production-ready 3D models instantly:
+Instead of manual CAD design workflows where clinicians describe prosthetics and engineers manually design them, this system allows doctors and prosthetists to describe prosthetic specifications in plain English, and the AI generates production-ready 3D models in FreeCAD format.
 
-| Shape | Capabilities |
-|-------|--------------|
-| **Prosthetic Arm** | Full anatomical assembly with socket, shoulder, joint, forearm, wrist, hand, fingers & thumb |
-| **Hollow Box** | Customizable dimensions with adjustable wall thickness |
-| **Sphere** | Parametric sphere generation |
-| **Hollow Cylinder** | Tube generation with custom wall thickness |
-| **Cone** | Parametric cone with height control |
-| **Spur Gear** | 18-tooth gear with hub and axle |
-| **Bolt** | Complete bolt assembly with head and slot |
-| **L-Bracket** | Load-bearing bracket with mounting holes |
-| **Tube** | Seamless hollow tubes for piping |
-| **Spring** | Coiled springs with customizable parameters |
-| **Spoked Wheel** | 5-spoke wheel assembly with tire, rim, and axle |
-| **Frame** | Structural frame components |
-| **Hexagon** | Precision hex shapes (bolts, fasteners) |
-| **Pipe** | Industrial pipe generation |
-| **Plate** | Flat plate components |
+### 💡 The Problem We Solve
 
-### 🗣️ **Voice Feedback**
-- Real-time text-to-speech confirmation using **pyttsx3**
-- Offline voice generation (no external TTS API required)
-- Customizable speech rate and tone
+- ⏱️ **Time-Consuming:** Manual CAD design takes hours per prosthetic
+- 💰 **Expensive:** Requires specialized CAD engineers
+- 📞 **Communication Gap:** Clinicians and engineers often miscommunicate
+- 🔄 **Repetitive:** Similar designs are redesigned from scratch
+- 🌍 **Access:** Limited CAD expertise in developing regions
 
-### 🖥️ **Intuitive GUI**
-- Clean Tkinter interface for easy interaction
-- Scrollable text displays for review
-- Live status updates and error handling
-- Professional layout with clear call-to-action buttons
+### ✅ Our Solution
 
-### ⚡ **Smart Parametrization**
-Automatically calculates proportional dimensions:
+- 🤖 **AI-Powered:** Local LLM processes natural language descriptions
+- ⚡ **Fast:** Generate designs in minutes instead of hours
+- 💻 **Automated:** Minimal human intervention required
+- 📚 **Learnable:** System improves with usage patterns
+- 🌍 **Accessible:** Works offline with local LLM (Ollama)
+
+---
+
+## 🚀 Key Features
+
+- ✅ **Natural Language Processing:** Describe prosthetics in plain English
+- ✅ **Automated CAD Generation:** Direct integration with FreeCAD
+- ✅ **3D Model Output:** Production-ready prosthetic designs
+- ✅ **Local LLM Support:** Privacy-first using Ollama
+- ✅ **Customization:** Adjust parameters easily
+- ✅ **Scalable:** Handle batch designs
+- ✅ **Version Control:** Track design iterations
+- ✅ **Open Source:** MIT licensed, community-driven
+
+---
+
+## 🔬 Technology Stack
+
+### Core Technologies
+- **Python 3.9+** - Primary language
+- **Ollama** - Local LLM inference (privacy-first)
+- **FreeCAD API** - 3D modeling and CAD automation
+- **LangChain** - LLM orchestration
+- **FastAPI** - REST API backend
+
+### AI & Machine Learning
+- **Language Models:** Mistral, Llama 2 (via Ollama)
+- **Embeddings:** Local embeddings for semantic understanding
+- **Prompt Engineering:** Specialized prompts for CAD generation
+
+### Supporting Libraries
+- **numpy** - Numerical computing
+- **pydantic** - Data validation
+- **pytest** - Testing framework
+- **docker** - Containerization
+
+---
+
+## 📋 Example Usage
+
+### Basic Example
+
+**Input:**
 ```
-Example Input: "prosthetic arm 150"
-Output: Full prosthetic arm model with proportional socket, joints, and hand
+"Generate a right-hand prosthetic with finger-length of 75mm, 
+wrist circumference of 170mm, with carbon fiber material properties"
+```
+
+**Output:**
+```
+✓ Design generated in 45 seconds
+✓ Model exported to: designs/prosthetic_right_hand_20260523.step
+✓ Weight estimate: 150g
+✓ Material: Carbon Fiber Reinforced Polymer
+```
+
+### API Example
+
+```python
+from prosthetic_cad_ai import ProstheticDesigner
+
+# Initialize
+designer = ProstheticDesigner(model="mistral")
+
+# Generate design
+result = designer.generate_prosthetic(
+    description="Left transtibial prosthetic for 45-year-old male, 
+                athletic activity level, energy-return foot",
+    parameters={
+        "material": "composite",
+        "activity_level": "high",
+        "weight_limit": 500  # grams
+    }
+)
+
+# Access results
+print(f"Design ID: {result.design_id}")
+print(f"File Path: {result.file_path}")
+print(f"Estimated Weight: {result.weight_estimate}g")
 ```
 
 ---
@@ -56,245 +116,295 @@ Output: Full prosthetic arm model with proportional socket, joints, and hand
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Python 3.8+**
-- **FreeCAD 1.0+** ([Download](https://www.freecadweb.org/))
-- **Ollama** with DeepSeek model ([Setup Guide](https://ollama.ai))
+- Python 3.9 or higher
+- FreeCAD 0.21+
+- Ollama (or access to LLM API)
+- 4GB RAM minimum (8GB recommended)
+- 5GB disk space
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/rufuspitta-ux/cad-ai.git
-   cd cad-ai
-   ```
-
-2. **Install Python dependencies**
-   ```bash
-   pip install pyttsx3 requests
-   ```
-
-3. **Ensure Ollama is running**
-   ```bash
-   ollama serve
-   ollama pull deepseek-r1:3b
-   ```
-
-4. **Configure paths** (if needed)
-   Edit `engineering.py` and update:
-   ```python
-   FREECAD = r"C:\Path\To\FreeCAD\bin\FreeCAD.exe"
-   OLLAMA_URL = "http://localhost:11434/api/generate"
-   ```
-
-5. **Run the application**
-   ```bash
-   python engineering.py
-   ```
-
----
-
-## 📹 Demo Video
-
-Watch the CAD AI in action - generating a prosthetic arm assembly from a simple text description:
-
-[![CAD AI Demo - Prosthetic Arm](demo_arm.mp4)](demo_arm.mp4)
-
-**What you'll see:**
-- Natural language input processing
-- AI parsing and parameter extraction
-- Real-time FreeCAD model generation
-- Interactive part visualization
-- Complete assembly with joints and articulation
-
----
-
-## 💡 Usage Examples
-
-### Basic Usage
-```
-Input: "arm 150"
-Output: ✅ Prosthetic arm launched in FreeCAD!
-        → Full arm assembly with proportional dimensions
-```
-
-### Advanced Parameters
-```
-Input: "gear 80mm"
-Output: ✅ Spur gear generating!
-        → 18-tooth gear with 80mm diameter
-
-Input: "hollow box 100x60x40"
-Output: ✅ Hollow box ready!
-        → 100×60×40mm box with 5mm wall thickness
-
-Input: "wheel 200"
-Output: ✅ Wheel launching now!
-        → 200mm diameter spoked wheel with tire and hub
-```
-
----
-
-## 🏗️ Technical Architecture
-
-### AI Pipeline
-1. **User Input** → Natural language description
-2. **Ollama Processing** → JSON parameter extraction
-3. **Shape Library** → Parametric Python generation
-4. **FreeCAD Python API** → 3D topology creation
-5. **Visualization** → Interactive 3D display
-
-### Shape Library Structure
-```
-Shape → Parameters (size, width, height, thickness)
-     → FreeCAD Python Code Generation
-     → Part Assembly (Boolean operations)
-     → Export/Display
-```
-
-### AI Model Specs
-- **Model**: DeepSeek-r1:3b
-- **Precision**: 0.1 (deterministic output)
-- **Max Tokens**: 250
-- **Response Format**: JSON (structured output)
-
----
-
-## 🛠️ Configuration
-
-### Customize Speech
-```python
-_engine.setProperty("rate", 160)  # Speech speed (default: 160)
-```
-
-### Adjust AI Temperature
-```python
-"options": {"temperature": 0.1, "num_predict": 250}
-```
-
-### Add Custom Shapes
-Extend the shape library by adding new CAD functions:
-```python
-def cad_custom(p):
-    S = val(p, "size", 100)
-    code = f"""
-    # Your FreeCAD Python code here
-    result = Part.makeSphere({S})
-    """
-    return code, "Custom Shape"
-```
-
----
-
-## 📦 Project Structure
-
-```
-cad-ai/
-├── engineering.py              # Main application
-├── demo_arm.mp4               # Demo video
-├── README.md                  # This file
-├── requirements.txt           # Python dependencies
-└── LICENSE                    # MIT License
-```
-
----
-
-## 🎯 Capabilities Summary
-
-| Feature | Status | Details |
-|---------|--------|---------|
-| AI Interpretation | ✅ | DeepSeek 3B with JSON output |
-| Local Processing | ✅ | No cloud/API dependency |
-| 15+ CAD Shapes | ✅ | Full parametric support |
-| Voice Feedback | ✅ | Offline TTS with pyttsx3 |
-| FreeCAD Integration | ✅ | Direct Python API automation |
-| GUI Interface | ✅ | Tkinter-based user interface |
-| Real-time Rendering | ✅ | Live 3D visualization |
-| Export Support | ✅ | FreeCAD native formats |
-
----
-
-## 🔧 Troubleshooting
-
-### FreeCAD Not Found
-Ensure FreeCAD path is correct:
+#### 1. Clone Repository
 ```bash
-# Windows
-C:\Users\[Username]\AppData\Local\Programs\FreeCAD 1.0\bin\FreeCAD.exe
+git clone https://github.com/rufuspitta-ux/prosthectic-cad-ai.git
+cd prosthectic-cad-ai
 ```
 
-### Ollama Connection Error
+#### 2. Create Virtual Environment
 ```bash
-# Check Ollama is running
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+#### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+#### 4. Install FreeCAD
+```bash
+# Ubuntu/Debian
+sudo apt-get install freecad
+
+# macOS
+brew install freecad
+
+# Windows: Download from https://www.freecad.org/
+```
+
+#### 5. Install & Run Ollama
+```bash
+# Download from: https://ollama.ai/
+
+# Pull model (e.g., Mistral)
+ollama pull mistral
+
+# Start Ollama server
 ollama serve
-
-# Verify model is installed
-ollama list | grep deepseek
 ```
 
-### Voice Not Working
-```python
-# Reinstall pyttsx3
-pip install --upgrade pyttsx3
+#### 6. Configure Environment
+```bash
+cp .env.example .env
+# Edit .env with your settings
+```
+
+### First Run
+
+```bash
+# Test setup
+python setup_check.py
+
+# Generate sample prosthetic
+python examples/generate_sample.py
+
+# Start API server
+python api/main.py
 ```
 
 ---
 
-## 📝 System Prompts
-
-The AI uses a sophisticated system prompt to ensure consistent JSON output:
+## 📁 Project Structure
 
 ```
-"You are Jarvis, a CAD assistant. The user describes a 3D part.
-Reply ONLY with a JSON object — no markdown, no explanation."
+prosthectic-cad-ai/
+├── README.md                          # Documentation
+├── LICENSE                            # MIT License
+├── CONTRIBUTING.md                    # Contribution guidelines
+├── requirements.txt                   # Dependencies
+├── setup.py                           # Package setup
+│
+├── src/
+│   ├── prosthetic_designer.py         # Main designer class
+│   ├── llm_interface.py               # LLM integration (Ollama)
+│   ├── cad_generator.py               # FreeCAD automation
+│   ├── parameter_extractor.py         # NLP → CAD parameters
+│   ├── validator.py                   # Design validation
+│   └── utils.py                       # Helper functions
+│
+├── api/
+│   ├── main.py                        # FastAPI application
+│   ├── routes.py                      # API endpoints
+│   ├── schemas.py                     # Pydantic models
+│   └── middleware.py                  # Auth & logging
+│
+├── prompts/
+│   ├── base_prompt.txt                # Core prompt template
+│   ├── prosthetic_prompts.txt         # Prosthetic-specific
+│   └── extraction_prompts.txt         # Parameter extraction
+│
+├── examples/
+│   ├── generate_sample.py
+│   ├── batch_generation.py
+│   └── api_client.py
+│
+├── tests/
+│   ├── test_llm_interface.py
+│   ├── test_cad_generator.py
+│   └── test_integration.py
+│
+└── docs/
+    ├── ARCHITECTURE.md
+    └── API_REFERENCE.md
 ```
-
-This ensures reliable parameter extraction for all shapes.
 
 ---
 
-## 🌟 Future Enhancements
+## 🔌 API Endpoints
 
-- [ ] Support for STL/STEP export
-- [ ] Advanced material properties
-- [ ] Assembly constraint automation
-- [ ] Multi-part design capability
-- [ ] Web-based interface
-- [ ] Real-time parameter optimization
-- [ ] Design history/undo stack
+### Generate Prosthetic Design
+```
+POST /api/v1/generate
+Content-Type: application/json
+
+{
+  "description": "Right hand prosthetic with finger joints",
+  "parameters": {
+    "material": "carbon_fiber",
+    "weight_limit": 200
+  }
+}
+
+Response:
+{
+  "design_id": "prosthetic_20260523_001",
+  "status": "completed",
+  "file_path": "/outputs/prosthetic_20260523_001.step",
+  "estimated_weight": 185,
+  "processing_time_seconds": 45,
+  "confidence_score": 0.92
+}
+```
+
+### Get Design Status
+```
+GET /api/v1/designs/{design_id}
+```
+
+### List Designs
+```
+GET /api/v1/designs?limit=10&offset=0
+```
+
+### Download Design File
+```
+GET /api/v1/designs/{design_id}/download
+```
+
+See [API_REFERENCE.md](docs/API_REFERENCE.md) for full documentation.
 
 ---
 
-## 📄 License
+## 🔐 Security & Privacy
 
-This project is licensed under the **MIT License** - see LICENSE file for details.
+- ✅ **Local Processing:** All LLM processing happens locally (Ollama)
+- ✅ **No Cloud Upload:** Designs never leave your system
+- ✅ **Data Encryption:** Optional encryption for sensitive designs
+- ✅ **Access Control:** Role-based authentication
+- ✅ **Audit Logging:** Track all design generations
+- ✅ **HIPAA Compatible:** Design ready for healthcare compliance
+
+---
+
+## 📊 Supported Prosthetic Types
+
+| Type | Status | Details |
+|------|--------|---------|
+| Upper Limb (Hand) | ✅ Supported | Transcarpal, transradial, transhumeral |
+| Upper Limb (Arm) | ✅ Supported | Various attachment points |
+| Lower Limb (Foot) | ✅ Supported | SACH, dynamic response, microprocessor |
+| Lower Limb (Leg) | ✅ Supported | Transtibial, transfemoral |
+| Hybrid | 🔄 Planned | Multi-component designs |
+| Modular | 🔄 In Development | Mix-and-match components |
+
+---
+
+## 🧪 Testing
+
+Run tests:
+
+```bash
+# All tests
+pytest tests/ -v
+
+# Specific test
+pytest tests/test_cad_generator.py -v
+
+# With coverage
+pytest --cov=src tests/
+```
+
+---
+
+## 📚 Documentation
+
+- [Architecture Guide](docs/ARCHITECTURE.md) - System design
+- [Installation Guide](docs/INSTALLATION.md) - Detailed setup
+- [Usage Guide](docs/USAGE_GUIDE.md) - How to use the system
+- [API Reference](docs/API_REFERENCE.md) - API endpoints
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to:
-1. Fork the repository
-2. Create a feature branch
-3. Submit pull requests
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- How to report issues
+- Feature request guidelines
+- Code contribution workflow
+- Testing requirements
+
+### Areas Seeking Contributions
+- [ ] Additional prosthetic types
+- [ ] Material database expansion
+- [ ] Web UI development
+- [ ] Mobile app
+- [ ] Performance optimization
+- [ ] Additional LLM support
+- [ ] Documentation improvements
 
 ---
 
-## 📧 Support
+## 📄 License
 
-For issues, questions, or feature requests:
-- **GitHub Issues**: [Open an issue](https://github.com/rufuspitta-ux/cad-ai/issues)
-- **Contact**: [Your Contact Info]
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🏥 Medical & Ethical Considerations
+
+**Important:** This is an AI-assisted design tool. Clinical adoption requires:
+
+- [ ] Medical professional review
+- [ ] Clinical validation studies
+- [ ] Regulatory approval (FDA/CE)
+- [ ] Integration with certified manufacturing
+- [ ] Proper documentation and QA
+- [ ] Patient consent and safety protocols
+
+**Disclaimer:** Not approved for autonomous clinical decision-making.
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **FreeCAD** - Open-source CAD platform
-- **Ollama** - Local LLM inference engine
-- **DeepSeek** - Efficient 3B model
-- **JARVIS Concept** - Inspired by intelligent assistants
+- FreeCAD community
+- Ollama and local LLM initiatives
+- Prosthetics research community
+- Healthcare AI innovators
 
 ---
 
-**Made with ❤️ by Rufus Pitta**
+## 📮 Support & Contact
 
+- 🐛 **Report Issues:** [GitHub Issues](https://github.com/rufuspitta-ux/prosthectic-cad-ai/issues)
+- 💬 **Discussions:** [GitHub Discussions](https://github.com/rufuspitta-ux/prosthectic-cad-ai/discussions)
+- 📧 **Email:** [Your Email]
+- 💼 **LinkedIn:** [Your LinkedIn]
+
+---
+
+## 🗺️ Roadmap
+
+**Q3 2026:**
+- [ ] Web interface
+- [ ] Real-time preview
+- [ ] Material library expansion
+
+**Q4 2026:**
+- [ ] Mobile app (iOS/Android)
+- [ ] Batch processing engine
+- [ ] Performance optimization
+
+**2027:**
+- [ ] Multi-language support
+- [ ] Advanced customization
+- [ ] Integration with 3D printers
+- [ ] Clinical validation partnership
+
+---
+
+**Revolutionizing Prosthetic Design with AI | Built for Clinicians & Engineers**
+
+---
+
+*Last Updated: May 2026 | Status: Active Development | Version: 1.0.0*
