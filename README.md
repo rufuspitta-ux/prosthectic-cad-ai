@@ -378,8 +378,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - 🐛 **Report Issues:** [GitHub Issues](https://github.com/rufuspitta-ux/prosthectic-cad-ai/issues)
 - 💬 **Discussions:** [GitHub Discussions](https://github.com/rufuspitta-ux/prosthectic-cad-ai/discussions)
-- 📧 **Email:** [Your Email]
-- 💼 **LinkedIn:** [Your LinkedIn]
+- 📧 **Email:** rufuspitta@gmail.com
+- 💼 **LinkedIn:** [Connect with me](https://linkedin.com/in/rufus-pitta)
 
 ---
 
