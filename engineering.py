@@ -13,9 +13,12 @@ import pyttsx3
 # ================================================================
 # CONFIG  — edit these if needed
 # ================================================================
-FREECAD      = r"C:\Users\Lenovo\AppData\Local\Programs\FreeCAD 1.0\bin\FreeCAD.exe"
-OLLAMA_MODEL = "deepseek-r1:3b"   # exact name from: ollama list
-OLLAMA_URL   = "http://localhost:11434/api/generate"
+FREECAD      = os.environ.get(
+    "FREECAD_BIN",
+    r"C:\\Users\\Lenovo\\AppData\\Local\\Programs\\FreeCAD 1.0\\bin\\FreeCAD.exe",
+)
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "deepseek-r1:3b")
+OLLAMA_URL   = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
  
 # ================================================================
 # VOICE  (pyttsx3 — free, offline)
@@ -58,6 +61,9 @@ Examples:
 """
  
 def ask_ollama(user_input):
+    user_input = str(user_input).strip()[:1000]
+    if not user_input:
+        return None
     try:
         payload = {
             "model": OLLAMA_MODEL,
@@ -71,8 +77,8 @@ def ask_ollama(user_input):
         m = re.search(r"\{[\s\S]*?\}", raw)
         if m:
             return json.loads(m.group())
-    except Exception:
-        pass
+    except (requests.RequestException, ValueError, json.JSONDecodeError):
+        return None
     return None
  
 # ================================================================
@@ -108,8 +114,9 @@ except Exception as e:
 def val(d, key, fallback):
     v = d.get(key)
     try:
-        return int(v) if v and int(v) > 0 else fallback
-    except Exception:
+        value = int(v)
+        return value if 0 < value <= 5000 else fallback
+    except (TypeError, ValueError):
         return fallback
  
 # ================================================================
@@ -383,8 +390,11 @@ def process(cmd, status_cb):
         return ("❓ Not recognised. Try:\n"
                 "  arm 150 | gear 80 | spring 120 | box 100x60x40\n"
                 "  wheel 200 | bolt 10 | bracket 80 | pipe 25")
-    shape = parsed.get("shape", "").lower()
-    msg   = parsed.get("message", f"Generating {shape}...")
+    if not isinstance(parsed, dict):
+        status_cb("Ready")
+        return "❌ The model returned an invalid response."
+    shape = str(parsed.get("shape", "")).lower().strip()
+    msg   = str(parsed.get("message", f"Generating {shape}..."))[:120]
     fn    = SHAPES.get(shape)
     if not fn:
         status_cb("Ready")
