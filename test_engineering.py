@@ -16,5 +16,23 @@ def test_val_accepts_positive_bounded_dimensions():
 
 def test_keyword_parser_restricts_shape_vocabulary():
     parsed = engineering.keyword_parse('please make a gear 80')
-    assert parsed == {'shape': 'gear', 'size': 80, 'message': 'Generating gear in keyword mode.'}
+    assert parsed == {
+        'shape': 'gear',
+        'size': 80,
+        'message': 'Generating gear in keyword mode.',
+    }
     assert engineering.keyword_parse('make something unknown') is None
+
+
+def test_all_shape_generators_return_cad_code_and_label():
+    for shape, generator in engineering.SHAPES.items():
+        code, label = generator({'shape': shape, 'size': 120})
+        assert isinstance(code, str) and code.strip()
+        assert isinstance(label, str) and label.strip()
+        assert 'result =' in code
+
+
+def test_keyword_parser_handles_missing_dimension_with_default():
+    parsed = engineering.keyword_parse('generate a plate')
+    assert parsed['shape'] == 'plate'
+    assert parsed['size'] == 120
