@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 import subprocess
@@ -9,40 +8,45 @@ import re
 import json
 import requests
 import pyttsx3
- 
+
 # ================================================================
-# CONFIG  — edit these if needed
+# CONFIG
 # ================================================================
-FREECAD      = os.environ.get(
+FREECAD = os.environ.get(
     "FREECAD_BIN",
     r"C:\\Users\\Lenovo\\AppData\\Local\\Programs\\FreeCAD 1.0\\bin\\FreeCAD.exe",
 )
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "deepseek-r1:3b")
-OLLAMA_URL   = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
- 
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
+
 # ================================================================
-# VOICE  (pyttsx3 — free, offline)
+# VOICE (offline)
 # ================================================================
 try:
     _engine = pyttsx3.init()
     _engine.setProperty("rate", 160)
 except Exception:
     _engine = None
- 
+
+
 def speak(text):
     try:
         if _engine:
             clean = re.sub(r"[^\w\s,.!?]", "", text)[:120]
-            threading.Thread(target=lambda: (_engine.say(clean), _engine.runAndWait()), daemon=True).start()
+            threading.Thread(
+                target=lambda: (_engine.say(clean), _engine.runAndWait()),
+                daemon=True,
+            ).start()
     except Exception:
         pass
- 
+
+
 # ================================================================
-# OLLAMA AI BRAIN  (free, local — DeepSeek 3B)
+# OLLAMA AI BRAIN
 # ================================================================
 SYSTEM_PROMPT = """You are Jarvis, a CAD assistant. The user describes a 3D part.
 Reply ONLY with a JSON object — no markdown, no explanation, nothing else.
- 
+
 JSON fields:
   shape     : one of → arm | box | sphere | cylinder | cone | gear | bolt |
                         bracket | tube | spring | wheel | frame | hex | pipe | plate
@@ -51,7 +55,7 @@ JSON fields:
   height    : optional mm
   thickness : optional wall thickness mm
   message   : short confirmation max 10 words
- 
+
 Examples:
   "arm 150"              → {"shape":"arm","size":150,"message":"Prosthetic arm on the way!"}
   "hollow box 100x60x40" → {"shape":"box","size":100,"width":60,"height":40,"thickness":5,"message":"Hollow box ready!"}
@@ -59,7 +63,8 @@ Examples:
   "spring 120"           → {"shape":"spring","size":120,"height":120,"message":"Spring coming up!"}
   "wheel 200"            → {"shape":"wheel","size":200,"message":"Wheel launching now!"}
 """
- 
+
+
 def ask_ollama(user_input):
     user_input = str(user_input).strip()[:1000]
     if not user_input:
@@ -69,31 +74,69 @@ def ask_ollama(user_input):
             "model": OLLAMA_MODEL,
             "prompt": f"{SYSTEM_PROMPT}\nUser: {user_input}\nJSON:",
             "stream": False,
-            "options": {"temperature": 0.1, "num_predict": 250}
+            "options": {"temperature": 0.1, "num_predict": 250},
         }
         r = requests.post(OLLAMA_URL, json=payload, timeout=30)
         r.raise_for_status()
         raw = r.json().get("response", "")
-        m = re.search(r"\{[\s\S]*?\}", raw)
-        if m:
-            return json.loads(m.group())
+        match = re.search(r"\{[\s\S]*?\}", raw)
+        if match:
+            return json.loads(match.group())
     except (requests.RequestException, ValueError, json.JSONDecodeError):
         return None
     return None
- 
+
+
+# ================================================================
+# HELPERS / VALIDATION
+# ================================================================
+def val(data, key, fallback):
+    value = data.get(key)
+    try:
+        number = int(value)
+        return number if 0 < number <= 5000 else fallback
+    except (TypeError, ValueError):
+        return fallback
+
+
+def validate_model_output(parsed):
+    """Normalize and validate the model response before it reaches CAD code."""
+    if not isinstance(parsed, dict):
+        return None
+
+    shape = str(parsed.get("shape", "")).lower().strip()
+    if shape not in SHAPES:
+        return None
+
+    clean = {"shape": shape}
+    for key, fallback in (
+        ("size", 120),
+        ("width", 60),
+        ("height", 120),
+        ("thickness", 6),
+    ):
+        if key in parsed:
+            clean[key] = val(parsed, key, fallback)
+
+    message = str(parsed.get("message", f"Generating {shape}...")).strip()
+    clean["message"] = re.sub(r"[^\w\s,.!?-]", "", message)[:120] or f"Generating {shape}."
+    return clean
+
+
 # ================================================================
 # FREECAD RUNNER
 # ================================================================
 def run_cad(code, label="Part"):
-    if not os.path.exists(FREECAD):
+    if not os.path.isfile(FREECAD):
         return f"❌ FreeCAD not found:\n{FREECAD}"
-    uid      = str(uuid.uuid4())[:8]
+
+    uid = str(uuid.uuid4())[:8]
     filepath = os.path.join(os.path.expanduser("~"), f"cad_{uid}.py")
     indented = "\n".join("    " + ln for ln in code.strip().splitlines())
     script = f"""import FreeCAD as App
 import Part
 import math
- 
+
 doc = App.newDocument("{label}")
 try:
 {indented}
@@ -103,26 +146,20 @@ except Exception as e:
     import sys
     print("CAD ERROR:", e, file=sys.stderr)
 """
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(script)
-    subprocess.Popen([FREECAD, filepath])
-    return f"✅ {label} launched in FreeCAD!"
- 
-# ================================================================
-# HELPER
-# ================================================================
-def val(d, key, fallback):
-    v = d.get(key)
+
     try:
-        value = int(v)
-        return value if 0 < value <= 5000 else fallback
-    except (TypeError, ValueError):
-        return fallback
- 
+        with open(filepath, "w", encoding="utf-8") as file:
+            file.write(script)
+        subprocess.Popen([FREECAD, filepath])
+    except OSError as exc:
+        return f"❌ Could not launch FreeCAD: {exc}"
+
+    return f"✅ {label} launched in FreeCAD!"
+
+
 # ================================================================
-# CAD SHAPE LIBRARY  (15 shapes)
+# CAD SHAPE LIBRARY (15 shapes)
 # ================================================================
- 
 def cad_arm(p):
     S = val(p, "size", 140)
     code = f"""
@@ -165,47 +202,47 @@ hand = hand.fuse(thumb)
 result = socket.fuse(shoulder).fuse(upper).fuse(joint).fuse(fore).fuse(wrist).fuse(hand)
 """
     return code, "Prosthetic Arm"
- 
- 
+
+
 def cad_box(p):
-    S = val(p,"size",100); W = val(p,"width",60); H = val(p,"height",40); T = val(p,"thickness",5)
+    S = val(p, "size", 100); W = val(p, "width", 60); H = val(p, "height", 40); T = val(p, "thickness", 5)
     code = f"""
 outer = Part.makeBox({S}, {W}, {H})
-inner = Part.makeBox({S-T*2}, {W-T*2}, {H-T})
+inner = Part.makeBox({max(1, S-T*2)}, {max(1, W-T*2)}, {max(1, H-T)})
 inner.translate(App.Vector({T}, {T}, {T}))
 result = outer.cut(inner)
 """
     return code, "Hollow Box"
- 
- 
+
+
 def cad_sphere(p):
-    S = val(p,"size",80)
+    S = val(p, "size", 80)
     return f"result = Part.makeSphere({S})", "Sphere"
- 
- 
+
+
 def cad_cylinder(p):
-    S = val(p,"size",60); H = val(p,"height",120); T = val(p,"thickness",6)
+    S = val(p, "size", 60); H = val(p, "height", 120); T = val(p, "thickness", 6)
     code = f"""
-outer  = Part.makeCylinder({S}, {H})
-inner  = Part.makeCylinder({max(1,S-T)}, {H})
+outer = Part.makeCylinder({S}, {H})
+inner = Part.makeCylinder({max(1, S-T)}, {H})
 result = outer.cut(inner)
 """
     return code, "Hollow Cylinder"
- 
- 
+
+
 def cad_cone(p):
-    S = val(p,"size",50); H = val(p,"height",100)
-    return f"result = Part.makeCone({S}, {max(1,S//10)}, {H})", "Cone"
- 
- 
+    S = val(p, "size", 50); H = val(p, "height", 100)
+    return f"result = Part.makeCone({S}, {max(1, S//10)}, {H})", "Cone"
+
+
 def cad_gear(p):
-    S = val(p,"size",60); TH = val(p,"thickness",20)
+    S = val(p, "size", 60); TH = val(p, "thickness", 20)
     code = f"""
-R  = {S}
-r  = R * 0.75
+R = {S}
+r = R * 0.75
 th = {TH}
-n  = 18
-base   = Part.makeCylinder(r, th)
+n = 18
+base = Part.makeCylinder(r, th)
 result = base
 for i in range(n):
     angle = 2*math.pi*i/n
@@ -216,60 +253,60 @@ for i in range(n):
     cy = r*0.88*math.sin(angle)
     tooth.translate(App.Vector(cx, cy, 0))
     result = result.fuse(tooth)
-hub  = Part.makeCylinder(r*0.28, th)
+hub = Part.makeCylinder(r*0.28, th)
 axle = Part.makeCylinder(r*0.10, th)
 result = result.fuse(hub).cut(axle)
 """
     return code, "Spur Gear"
- 
- 
+
+
 def cad_bolt(p):
-    S = val(p,"size",8); H = val(p,"height",50); TH = val(p,"thickness",12)
+    S = val(p, "size", 8); H = val(p, "height", 50); TH = val(p, "thickness", 12)
     code = f"""
 shaft = Part.makeCylinder({S}, {H})
-head  = Part.makeCylinder({TH}, {TH//2})
+head = Part.makeCylinder({TH}, {max(1, TH//2)})
 head.translate(App.Vector(0, 0, {H}))
-slot  = Part.makeBox({TH*0.8}, {TH*0.15}, {TH//2+1})
+slot = Part.makeBox({max(1, TH*0.8)}, {max(1, TH*0.15)}, {max(1, TH//2+1)})
 slot.translate(App.Vector(-{TH*0.4}, -{TH*0.075}, {H}))
-head  = head.cut(slot)
+head = head.cut(slot)
 result = shaft.fuse(head)
 """
     return code, "Bolt"
- 
- 
+
+
 def cad_bracket(p):
-    S = val(p,"size",80); T = val(p,"thickness",6)
+    S = val(p, "size", 80); T = val(p, "thickness", 6)
     code = f"""
 base = Part.makeBox({S}, {T}, {S})
 wall = Part.makeBox({T}, {S}, {S})
 wall.translate(App.Vector(0, {T}, 0))
-h1 = Part.makeCylinder({T//2}, {T}+2)
+h1 = Part.makeCylinder({max(1, T//2)}, {T}+2)
 h1.rotate(App.Vector(0,0,0), App.Vector(1,0,0), 90)
 h1.translate(App.Vector({S//2}, -1, {S//4}))
-h2 = Part.makeCylinder({T//2}, {T}+2)
+h2 = Part.makeCylinder({max(1, T//2)}, {T}+2)
 h2.rotate(App.Vector(0,0,0), App.Vector(1,0,0), 90)
 h2.translate(App.Vector({S//2}, -1, {S*3//4}))
 result = base.fuse(wall).cut(h1).cut(h2)
 """
     return code, "L-Bracket"
- 
- 
+
+
 def cad_tube(p):
-    S = val(p,"size",30); H = val(p,"height",150); T = val(p,"thickness",4)
+    S = val(p, "size", 30); H = val(p, "height", 150); T = val(p, "thickness", 4)
     code = f"""
-outer  = Part.makeCylinder({S}, {H})
-inner  = Part.makeCylinder({max(1,S-T)}, {H})
+outer = Part.makeCylinder({S}, {H})
+inner = Part.makeCylinder({max(1, S-T)}, {H})
 result = outer.cut(inner)
 """
     return code, "Tube"
- 
- 
+
+
 def cad_spring(p):
-    S = val(p,"size",20); H = val(p,"height",120)
+    S = val(p, "size", 20); H = val(p, "height", 120)
     code = f"""
 radius = {S}
 wire_r = {max(2, S//8)}
-coils  = 10
+coils = 10
 height = {H}
 result = Part.makeTorus(radius, wire_r)
 for i in range(1, coils):
@@ -278,44 +315,44 @@ for i in range(1, coils):
     result = result.fuse(t)
 """
     return code, "Spring"
- 
- 
+
+
 def cad_wheel(p):
-    S = val(p,"size",100); W = val(p,"width",30); T = val(p,"thickness",8)
+    S = val(p, "size", 100); W = val(p, "width", 30); T = val(p, "thickness", 8)
     code = f"""
-tire  = Part.makeCylinder({S},          {W})
-rim   = Part.makeCylinder({max(1,S-T)}, {W})
-hub   = Part.makeCylinder({S//5},       {W})
+tire = Part.makeCylinder({S}, {W})
+rim = Part.makeCylinder({max(1, S-T)}, {W})
+hub = Part.makeCylinder({max(1, S//5)}, {W})
 wheel = tire.cut(rim).fuse(hub)
-sp_r  = {max(3, S//20)}
+sp_r = {max(3, S//20)}
 for i in range(5):
-    sp = Part.makeCylinder(sp_r, {S - S//5 - T})
+    sp = Part.makeCylinder(sp_r, {max(1, S-S//5-T)})
     sp.rotate(App.Vector(0,0,0), App.Vector(0,1,0), 90)
     sp.rotate(App.Vector(0,0,0), App.Vector(0,0,1), 72*i)
     sp.translate(App.Vector({S//5}, 0, {W//2}))
     wheel = wheel.fuse(sp)
-axle  = Part.makeCylinder({max(2,S//12)}, {W})
+axle = Part.makeCylinder({max(2, S//12)}, {W})
 result = wheel.cut(axle)
 """
     return code, "Spoked Wheel"
- 
- 
+
+
 def cad_frame(p):
-    S = val(p,"size",120); T = val(p,"thickness",6)
+    S = val(p, "size", 120); T = val(p, "thickness", 6)
     code = f"""
-top    = Part.makeBox({S},   {T},   {T})
-bottom = Part.makeBox({S},   {T},   {T})
-left   = Part.makeBox({T},   {S},   {T})
-right  = Part.makeBox({T},   {S},   {T})
+top = Part.makeBox({S}, {T}, {T})
+bottom = Part.makeBox({S}, {T}, {T})
+left = Part.makeBox({T}, {S}, {T})
+right = Part.makeBox({T}, {S}, {T})
 bottom.translate(App.Vector(0, {S-T}, 0))
 right.translate(App.Vector({S-T}, 0, 0))
 result = top.fuse(bottom).fuse(left).fuse(right)
 """
     return code, "Frame"
- 
- 
+
+
 def cad_plate(p):
-    S = val(p,"size",120); W = val(p,"width",80); T = val(p,"thickness",6)
+    S = val(p, "size", 120); W = val(p, "width", 80); T = val(p, "thickness", 6)
     code = f"""
 plate = Part.makeBox({S}, {W}, {T})
 r = {T}
@@ -326,36 +363,35 @@ for hx, hy in [({T*2},{T*2}), ({S-T*2},{T*2}), ({T*2},{W-T*2}), ({S-T*2},{W-T*2}
 result = plate
 """
     return code, "Mounting Plate"
- 
- 
+
+
 def cad_hex(p):
-    S = val(p,"size",30); TH = val(p,"thickness",15)
+    S = val(p, "size", 30); TH = val(p, "thickness", 15)
     code = f"""
-pts = [App.Vector({S}*math.cos(math.pi/6+math.pi*i/3),
-                  {S}*math.sin(math.pi/6+math.pi*i/3), 0) for i in range(6)]
+pts = [App.Vector({S}*math.cos(math.pi/6+math.pi*i/3), {S}*math.sin(math.pi/6+math.pi*i/3), 0) for i in range(6)]
 pts.append(pts[0])
-wire   = Part.makePolygon(pts)
-face   = Part.Face(wire)
-hex3d  = face.extrude(App.Vector(0, 0, {TH}))
-bore   = Part.makeCylinder({max(2,S//3)}, {TH})
+wire = Part.makePolygon(pts)
+face = Part.Face(wire)
+hex3d = face.extrude(App.Vector(0, 0, {TH}))
+bore = Part.makeCylinder({max(2, S//3)}, {TH})
 result = hex3d.cut(bore)
 """
     return code, "Hex Nut"
- 
- 
+
+
 def cad_pipe(p):
-    S = val(p,"size",25); H = val(p,"height",200); T = val(p,"thickness",3)
+    S = val(p, "size", 25); H = val(p, "height", 200); T = val(p, "thickness", 3)
     code = f"""
-outer   = Part.makeCylinder({S},           {H})
-inner   = Part.makeCylinder({max(1,S-T)},  {H})
+outer = Part.makeCylinder({S}, {H})
+inner = Part.makeCylinder({max(1, S-T)}, {H})
 flange1 = Part.makeCylinder({S+8}, 8)
 flange2 = Part.makeCylinder({S+8}, 8)
 flange2.translate(App.Vector(0, 0, {H-8}))
-result  = outer.cut(inner).fuse(flange1).fuse(flange2)
+result = outer.cut(inner).fuse(flange1).fuse(flange2)
 """
     return code, "Flanged Pipe"
- 
- 
+
+
 # ================================================================
 # SHAPE ROUTER
 # ================================================================
@@ -366,132 +402,201 @@ SHAPES = {
     "spring": cad_spring, "wheel": cad_wheel, "frame": cad_frame,
     "plate": cad_plate, "hex": cad_hex, "pipe": cad_pipe,
 }
- 
+
+
 def keyword_parse(text):
-    t = text.lower()
+    t = str(text).lower()
     for kw in SHAPES:
         if kw in t:
             nums = re.findall(r"\d+", t)
-            return {"shape": kw, "size": int(nums[0]) if nums else 120,
-                    "message": f"Generating {kw} in keyword mode."}
+            return {
+                "shape": kw,
+                "size": int(nums[0]) if nums else 120,
+                "message": f"Generating {kw} in keyword mode.",
+            }
     return None
- 
+
+
 # ================================================================
 # PROCESS
 # ================================================================
 def process(cmd, status_cb):
     status_cb("🤖 Asking DeepSeek...")
-    parsed = ask_ollama(cmd)
+    parsed = validate_model_output(ask_ollama(cmd))
     if not parsed:
         status_cb("⚡ AI offline — keyword mode")
-        parsed = keyword_parse(cmd)
+        parsed = validate_model_output(keyword_parse(cmd))
     if not parsed:
         status_cb("Ready")
-        return ("❓ Not recognised. Try:\n"
-                "  arm 150 | gear 80 | spring 120 | box 100x60x40\n"
-                "  wheel 200 | bolt 10 | bracket 80 | pipe 25")
-    if not isinstance(parsed, dict):
-        status_cb("Ready")
-        return "❌ The model returned an invalid response."
-    shape = str(parsed.get("shape", "")).lower().strip()
-    msg   = str(parsed.get("message", f"Generating {shape}..."))[:120]
-    fn    = SHAPES.get(shape)
-    if not fn:
-        status_cb("Ready")
-        return f"❓ Unknown shape '{shape}'. Available: {', '.join(SHAPES)}"
-    code, label = fn(parsed)
+        return (
+            "❓ Not recognised. Try:\n"
+            "  arm 150 | gear 80 | spring 120 | box 100x60x40\n"
+            "  wheel 200 | bolt 10 | bracket 80 | pipe 25"
+        )
+
+    shape = parsed["shape"]
+    msg = parsed["message"]
+    code, label = SHAPES[shape](parsed)
     status_cb("🔨 Launching FreeCAD...")
     result = run_cad(code, label)
     status_cb("Ready")
     speak(msg)
     return f"🤖 {msg}\n{result}"
- 
+
+
 # ================================================================
-# GUI  (dark theme, quick buttons, threaded)
+# GUI (dark theme, quick buttons, threaded)
 # ================================================================
-BG      = "#1e1e2e"
-PANEL   = "#2a2a3e"
-ACCENT  = "#7c6af7"
-FG      = "#cdd6f4"
-ENT_BG  = "#313244"
-C_YOU   = "#f9e2af"
-C_JAR   = "#a6e3a1"
-C_ERR   = "#f38ba8"
-C_INFO  = "#89b4fa"
- 
+BG = "#1e1e2e"
+PANEL = "#2a2a3e"
+ACCENT = "#7c6af7"
+FG = "#cdd6f4"
+ENT_BG = "#313244"
+C_YOU = "#f9e2af"
+C_JAR = "#a6e3a1"
+C_ERR = "#f38ba8"
+C_INFO = "#89b4fa"
+
+
 def build_gui():
     root = tk.Tk()
     root.title("Jarvis CAD  v2  •  DeepSeek-R1:3B + FreeCAD")
     root.configure(bg=BG)
     root.geometry("860x640")
- 
-    # title bar
+
     tf = tk.Frame(root, bg=ACCENT, height=46)
     tf.pack(fill=tk.X)
-    tk.Label(tf, text="⚙  JARVIS CAD ASSISTANT  v2", font=("Segoe UI",13,"bold"),
-             bg=ACCENT, fg="white", pady=9).pack(side=tk.LEFT, padx=16)
-    tk.Label(tf, text=f"DeepSeek  {OLLAMA_MODEL}  |  FreeCAD  |  pyttsx3",
-             font=("Segoe UI",8), bg=ACCENT, fg="#ddd").pack(side=tk.RIGHT, padx=16)
- 
-    # chat
-    chat = ScrolledText(root, bg=PANEL, fg=FG, font=("Consolas",10),
-                        bd=0, relief=tk.FLAT, wrap=tk.WORD)
-    chat.pack(fill=tk.BOTH, expand=True, padx=14, pady=(10,4))
-    chat.tag_config("you",  foreground=C_YOU)
-    chat.tag_config("jar",  foreground=C_JAR)
-    chat.tag_config("err",  foreground=C_ERR)
+    tk.Label(
+        tf,
+        text="⚙  JARVIS CAD ASSISTANT  v2",
+        font=("Segoe UI", 13, "bold"),
+        bg=ACCENT,
+        fg="white",
+        pady=9,
+    ).pack(side=tk.LEFT, padx=16)
+    tk.Label(
+        tf,
+        text=f"DeepSeek  {OLLAMA_MODEL}  |  FreeCAD  |  pyttsx3",
+        font=("Segoe UI", 8),
+        bg=ACCENT,
+        fg="#ddd",
+    ).pack(side=tk.RIGHT, padx=16)
+
+    chat = ScrolledText(
+        root,
+        bg=PANEL,
+        fg=FG,
+        font=("Consolas", 10),
+        bd=0,
+        relief=tk.FLAT,
+        wrap=tk.WORD,
+    )
+    chat.pack(fill=tk.BOTH, expand=True, padx=14, pady=(10, 4))
+    chat.tag_config("you", foreground=C_YOU)
+    chat.tag_config("jar", foreground=C_JAR)
+    chat.tag_config("err", foreground=C_ERR)
     chat.tag_config("info", foreground=C_INFO)
- 
+
     def log(text, tag="info"):
-        chat.insert(tk.END, text+"\n", tag)
+        chat.insert(tk.END, text + "\n", tag)
         chat.see(tk.END)
- 
-    # quick buttons
+
     qf = tk.Frame(root, bg=BG)
     qf.pack(fill=tk.X, padx=14, pady=2)
-    tk.Label(qf, text="Quick:", bg=BG, fg="#888", font=("Segoe UI",8)).pack(side=tk.LEFT)
-    for qc in ["arm 150","gear 80","spring 120","box 100x60x40",
-               "wheel 100","bolt 10","bracket 80","pipe 25","hex 30","plate 120"]:
-        tk.Button(qf, text=qc, bg=ENT_BG, fg=FG, font=("Segoe UI",8),
-                  relief=tk.FLAT, bd=0, padx=5, pady=2,
-                  command=lambda c=qc: quick(c)).pack(side=tk.LEFT, padx=2)
- 
-    # input row
+    tk.Label(qf, text="Quick:", bg=BG, fg="#888", font=("Segoe UI", 8)).pack(side=tk.LEFT)
+
+    # Defined before buttons are created so callbacks can safely capture it.
+    def quick(command):
+        entry.delete(0, tk.END)
+        entry.insert(0, command)
+        do_send(command)
+
+    for qc in [
+        "arm 150", "gear 80", "spring 120", "box 100x60x40",
+        "wheel 100", "bolt 10", "bracket 80", "pipe 25", "hex 30", "plate 120"
+    ]:
+        tk.Button(
+            qf,
+            text=qc,
+            bg=ENT_BG,
+            fg=FG,
+            font=("Segoe UI", 8),
+            relief=tk.FLAT,
+            bd=0,
+            padx=5,
+            pady=2,
+            command=lambda c=qc: quick(c),
+        ).pack(side=tk.LEFT, padx=2)
+
     inf = tk.Frame(root, bg=BG)
-    inf.pack(fill=tk.X, padx=14, pady=(6,4))
-    entry = tk.Entry(inf, bg=ENT_BG, fg=FG, font=("Segoe UI",11),
-                     bd=0, relief=tk.FLAT, insertbackground=FG)
-    entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, padx=(0,8))
-    btn = tk.Button(inf, text="Generate ▶", bg=ACCENT, fg="white",
-                    font=("Segoe UI",10,"bold"), relief=tk.FLAT, bd=0, padx=14, pady=6)
+    inf.pack(fill=tk.X, padx=14, pady=(6, 4))
+    entry = tk.Entry(
+        inf,
+        bg=ENT_BG,
+        fg=FG,
+        font=("Segoe UI", 11),
+        bd=0,
+        relief=tk.FLAT,
+        insertbackground=FG,
+    )
+    entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, padx=(0, 8))
+    btn = tk.Button(
+        inf,
+        text="Generate ▶",
+        bg=ACCENT,
+        fg="white",
+        font=("Segoe UI", 10, "bold"),
+        relief=tk.FLAT,
+        bd=0,
+        padx=14,
+        pady=6,
+    )
     btn.pack(side=tk.LEFT)
- 
-    # status bar
+
     sv = tk.StringVar(value="Ready  —  type a command or click a quick button")
-    tk.Label(root, textvariable=sv, bg=PANEL, fg="#888",
-             font=("Segoe UI",8), anchor=tk.W, pady=4).pack(fill=tk.X, side=tk.BOTTOM)
- 
-    def set_status(m): sv.set(m); root.update_idletasks()
- 
+    tk.Label(
+        root,
+        textvariable=sv,
+        bg=PANEL,
+        fg="#888",
+        font=("Segoe UI", 8),
+        anchor=tk.W,
+        pady=4,
+    ).pack(fill=tk.X, side=tk.BOTTOM)
+
+    def set_status(message):
+        # Tkinter widgets should be touched only from the GUI thread.
+        root.after(0, sv.set, message)
+
+    def append_log(text, tag):
+        root.after(0, log, text, tag)
+
+    def set_button_state(state):
+        root.after(0, lambda: btn.config(state=state))
+
     def do_send(cmd):
         cmd = cmd.strip()
-        if not cmd: return
+        if not cmd:
+            return
         entry.delete(0, tk.END)
         log(f"\nYou: {cmd}", "you")
-        btn.config(state=tk.DISABLED)
+        set_button_state(tk.DISABLED)
+
         def worker():
-            res = process(cmd, set_status)
-            tag = "err" if res.startswith("❌") else "jar"
-            log(f"Jarvis: {res}", tag)
-            btn.config(state=tk.NORMAL)
+            try:
+                res = process(cmd, set_status)
+                tag = "err" if res.startswith("❌") else "jar"
+                append_log(f"Jarvis: {res}", tag)
+            except Exception as exc:
+                append_log(f"Jarvis: ❌ Unexpected error: {exc}", "err")
+            finally:
+                set_button_state(tk.NORMAL)
+
         threading.Thread(target=worker, daemon=True).start()
- 
-    def quick(c): entry.delete(0,tk.END); entry.insert(0,c); do_send(c)
- 
+
     btn.config(command=lambda: do_send(entry.get()))
-    entry.bind("<Return>", lambda e: do_send(entry.get()))
- 
-    # welcome
+    entry.bind("<Return>", lambda event: do_send(entry.get()))
+
     log("╔══════════════════════════════════════════════╗")
     log("║   JARVIS CAD  v2  •  DeepSeek R1:3B + FreeCAD  ║")
     log("╚══════════════════════════════════════════════╝")
@@ -501,9 +606,9 @@ def build_gui():
     log("\nMake sure Ollama is running before use:")
     log("   ollama run deepseek-r1:3b")
     log("\nFalls back to keyword mode if Ollama is offline.\n")
- 
+
     root.mainloop()
- 
+
+
 if __name__ == "__main__":
     build_gui()
- 
